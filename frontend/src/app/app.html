@@ -1,0 +1,96 @@
+<main class="app">
+  <header class="app-header">
+    <h1>Tic Tac Toe</h1>
+    <div class="mode-switch" role="radiogroup" aria-label="Game mode">
+      @for (mode of modes; track mode.value) {
+        <button
+          type="button"
+          role="radio"
+          class="mode-option"
+          [class.active]="store.mode() === mode.value"
+          [attr.aria-checked]="store.mode() === mode.value"
+          [attr.data-testid]="'mode-' + mode.value"
+          [disabled]="store.busy()"
+          (click)="selectMode(mode.value)"
+        >
+          {{ mode.label }}
+        </button>
+      }
+    </div>
+  </header>
+
+  <div class="layout">
+    <section class="card game-panel" aria-label="Game">
+      @let game = store.game();
+
+      <div class="status-row">
+        <p
+          class="status"
+          [class.won]="game?.status === 'Won'"
+          [class.draw]="game?.status === 'Draw'"
+          role="status"
+          aria-live="polite"
+          data-testid="status"
+        >
+          {{ store.statusMessage() }}
+        </p>
+        <span class="badge" data-testid="mode-badge">
+          {{ store.mode() === 'Computer' ? 'You (X) vs Computer (O)' : 'Player X vs Player O' }}
+        </span>
+      </div>
+
+      @if (game) {
+        <app-board
+          [board]="game.board"
+          [winningCells]="game.winningCells"
+          [disabled]="store.busy() || store.isCompleted()"
+          (cellSelected)="store.play($event.row, $event.column)"
+        />
+      }
+
+      @if (store.error(); as error) {
+        <div class="error" role="alert" data-testid="error">
+          <span>{{ error }}</span>
+          <button
+            type="button"
+            class="icon-button"
+            aria-label="Dismiss"
+            (click)="store.clearError()"
+          >
+            ×
+          </button>
+        </div>
+      }
+
+      <div class="actions">
+        <button
+          type="button"
+          class="btn"
+          data-testid="undo"
+          [disabled]="!store.canUndo()"
+          (click)="store.undo()"
+        >
+          ↶ Undo Last Move
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          data-testid="reset-game"
+          [disabled]="store.busy() || !game"
+          (click)="store.resetGame()"
+        >
+          ⟳ Reset Game
+        </button>
+      </div>
+    </section>
+
+    <aside class="side">
+      <app-scoreboard
+        [score]="store.scoreboard()"
+        [disabled]="store.busy()"
+        (resetScoreboard)="store.resetScoreboard()"
+      />
+      <app-move-history [moves]="game?.moves ?? []" />
+    </aside>
+  </div>
+</main>

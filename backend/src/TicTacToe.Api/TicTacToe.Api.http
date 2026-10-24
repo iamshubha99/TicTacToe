@@ -1,0 +1,29 @@
+@baseUrl = http://localhost:5080
+
+### Create a game (mode: TwoPlayer | Computer)
+# @name create
+POST {{baseUrl}}/api/games
+Content-Type: application/json
+
+{ "mode": "TwoPlayer" }
+
+### Get game state
+GET {{baseUrl}}/api/games/{{create.response.body.$.id}}
+
+### Submit a move (row/column are zero-based)
+POST {{baseUrl}}/api/games/{{create.response.body.$.id}}/moves
+Content-Type: application/json
+
+{ "player": "X", "row": 1, "column": 1 }
+
+### Undo last move
+POST {{baseUrl}}/api/games/{{create.response.body.$.id}}/undo
+
+### Reset game (scoreboard kept)
+POST {{baseUrl}}/api/games/{{create.response.body.$.id}}/reset
+
+### Get scoreboard
+GET {{baseUrl}}/api/scoreboard
+
+### Reset scoreboard
+POST {{baseUrl}}/api/scoreboard/reset
