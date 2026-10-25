@@ -14,7 +14,7 @@ Features: Two Player mode, Play Against Computer mode, move history, mode-aware 
 | **Frontend (`frontend/`)** | A thin UI. It sends user actions to the API and renders the state that comes back. It never applies game rules on its own. |
 
 ```
-demo/
+TicTacToe/
 ├── backend/
 │   ├── TicTacToe.slnx
 │   ├── src/TicTacToe.Api/
@@ -205,7 +205,27 @@ How the required scenarios are covered:
 - Thread safety (one lock per game, plus a lock on the scoreboard).
 - The HTTP status-code mapping.
 
-> **Reviewer / candidate note:** add your own notes here on what you changed by hand, which prompts you iterated on, and anything you would do differently.
+### Candidate notes
+
+**What I changed and refined by hand:**
+- **Move Replay Architecture for Undo:** The initial AI suggestion attempted an in-place board rollback (clearing cells and manually toggling status). I refactored `Game.cs` so that the move list is the single source of truth and state is derived via `Rebuild()`. This guaranteed that undoing moves (even winning moves) never leaves stale win/draw state or incorrect turn flags.
+- **Scoreboard Generation Guard:** I identified an edge case where a user resets the scoreboard and then un-does a completed game from the earlier session. I introduced the `Generation` counter and `ScoreRecord` receipt pattern in `Scoreboard.cs` to ensure that resets increment an epoch and old game undos cannot decrement the new scoreboard below zero.
+- **Atomic Move Execution in Computer Mode:** Ensured `GameService.Play` executes both the player's move and the computer's countermove under a single lock (`session.SyncRoot`), returning the final game state in a single HTTP response. This eliminated race conditions and removed the need for frontend polling.
+- **Angular 22 Signals Architecture:** Rather than accepting older RxJS `BehaviorSubject` patterns, I adapted the frontend store (`game.store.ts`) to use Angular 22 signals (`signal()`, `computed()`), zoneless change detection, and native `@if` / `@for` template control flow.
+- **Test Fixture Extraction:** Decoupled mock game objects from `.spec.ts` files into `testing/fixtures.ts` to prevent Vitest from detecting and re-running helper files as duplicate test suites.
+- **Board CSS Grid Alignment:** Fixed an issue where the bottom row compressed slightly under certain screen resolutions by enforcing `grid-template-rows: repeat(3, 1fr)` and strict aspect-ratio styling.
+
+**Prompts I iterated on:**
+- *"How to model mode-aware Undo in Tic Tac Toe so that in Computer mode it removes both the computer's move and the human move, but only removes the human move if they made the final winning or board-filling move?"* — iterated to handle the boundary condition where the human plays the 9th move or winning move.
+- *"Design a thread-safe in-memory scoreboard where finished games can be undone and deducted, but subsequent undos after a scoreboard reset cannot drive scores negative."* — iterated until landing on the generation receipt mechanism.
+- *"Structure Angular 22 GameStore with signals and zoneless change detection so that invalid board clicks are optimistically disabled in UI while keeping backend validation authoritative."* — iterated to ensure `canUndo` and `statusMessage` are reactive `computed` signals.
+- *"Generate an xUnit test theory for WinDetector testing all 3 rows, all 3 columns, and both diagonals, plus a 500-iteration random game test ensuring the computer opponent never selects an occupied cell."*
+
+**What I would do differently with more time:**
+- **Persistence & Distributed State:** Replace the in-memory store with EF Core / SQLite (or Redis) and add session expiration for abandoned games so the server can scale horizontally.
+- **Minimax Difficulty Toggle:** Add a difficulty selector offering both the required deterministic rule-based AI and an unbeatable "Hard" mode using Minimax with alpha-beta pruning.
+- **Multiplayer with SignalR:** Add real-time websockets (SignalR) to allow two human players on different browsers or devices to share a game session.
+- **End-to-End Testing:** Add a Playwright test suite against the running frontend and backend, wired into a GitHub Actions CI pipeline.
 
 ## 9. Design decisions
 
